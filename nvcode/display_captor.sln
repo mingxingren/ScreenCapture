@@ -1,0 +1,33 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31112.23
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DisplayCaptor", "src\DisplayCaptor.vcxproj", "{C6E590D7-2130-4886-BD54-4CEC9FB09666}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestDisplayCaptor", "examples\TestDisplayCaptor.vcxproj", "{359E4655-17C7-4828-8894-8F73362D55AD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C6E590D7-2130-4886-BD54-4CEC9FB09666} = {C6E590D7-2130-4886-BD54-4CEC9FB09666}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C6E590D7-2130-4886-BD54-4CEC9FB09666}.Debug|x64.ActiveCfg = Debug|x64
+		{C6E590D7-2130-4886-BD54-4CEC9FB09666}.Debug|x64.Build.0 = Debug|x64
+		{C6E590D7-2130-4886-BD54-4CEC9FB09666}.Release|x64.ActiveCfg = Release|x64
+		{C6E590D7-2130-4886-BD54-4CEC9FB09666}.Release|x64.Build.0 = Release|x64
+		{359E4655-17C7-4828-8894-8F73362D55AD}.Debug|x64.ActiveCfg = Debug|x64
+		{359E4655-17C7-4828-8894-8F73362D55AD}.Debug|x64.Build.0 = Debug|x64
+		{359E4655-17C7-4828-8894-8F73362D55AD}.Release|x64.ActiveCfg = Release|x64
+		{359E4655-17C7-4828-8894-8F73362D55AD}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3F7A5E76-4C81-4BEB-8123-6C2998E478CE}
+	EndGlobalSection
+EndGlobal
