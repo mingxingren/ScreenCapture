@@ -17,7 +17,8 @@ int main(int argc, char** argv) {
 
     std::array<int, 4> arrDriverType = { D3D_DRIVER_TYPE_HARDWARE,  D3D_DRIVER_TYPE_WARP, D3D_DRIVER_TYPE_REFERENCE, D3D_DRIVER_TYPE_UNKNOWN };
     ID3D11Device* pD3DDevice = nullptr;
-    ID3D11DeviceContext* pContext;
+    ID3D11DeviceContext* pImmContext;
+    ID3D11Multithread* pMultithread;
     D3D_FEATURE_LEVEL featureLevel;
 
     // 创建屏幕设备 device默认为空
@@ -29,11 +30,13 @@ int main(int argc, char** argv) {
             nullptr,
             0,
             D3D11_SDK_VERSION,
-            &pD3DDevice, &featureLevel, &pContext
+            &pD3DDevice, &featureLevel, &pImmContext
         );
 
         if (res == S_OK) {
             printf_s("ID3D11Device init success, type: %d\n", index);
+            pImmContext->QueryInterface(IID_PPV_ARGS(&pMultithread));
+            pMultithread->SetMultithreadProtected(true);
             break;
         }
     }
@@ -125,15 +128,8 @@ int main(int argc, char** argv) {
     //else {
     //    printf_s("encode init success\n");
     //}
-    
-    ID3D11DeviceContext* deferred_context;
-    res = pD3DDevice->CreateDeferredContext(0, &deferred_context);
-    if (res != S_OK) {
-        printf_s("CreateDeferredContext return error: %d", res);
-        return -1;
-    }
 
-    if (!oEncoder.encode_init_width(pD3DDevice, deferred_context, &encode_config)) {
+    if (!oEncoder.encode_init_width(pD3DDevice, pImmContext, &encode_config)) {
         printf_s("encode init fail!\n");
     }
     else {
@@ -184,17 +180,11 @@ int main(int argc, char** argv) {
                 printf_s("Get ID3D11Texture2D fail: %d\n", res);
             }
             else {
-                void* buf = nullptr;
-                int buf_len = 0;
-
-                if (oEncoder.copy_mutex(texture)) {
-                    printf_s("Get a Frame success, sub cost time: %d\n", clock.elapsed());
-                    oEncoder.notify_encode();
-                }
-                else {
-                    printf("encode_send fail!\n");
+                if (!oEncoder.notify_encode(texture)) {
+                    texture->Release();
                 }
             }
+            frame_resource->Release();
         }
     }
 

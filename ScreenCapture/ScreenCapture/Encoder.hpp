@@ -5,7 +5,9 @@
 #include <thread>
 #include <sstream>
 #include <string>
+#include "time.h"
 #include "CommonFun.h"
+#include "CommonType.h"
 #include "display_captor.h"
 class Encoder {
 public:
@@ -53,7 +55,6 @@ public:
 		// 寻找显卡适配器
 		::GetAdapter(&m_pNividaAdapter1);
 		if (m_pNividaAdapter1 == nullptr) {
-			printf_s("##################fail 11111\n");
 			return false;
 		}
 
@@ -106,32 +107,58 @@ public:
 		m_pThread = new std::thread(&Encoder::run, this);
 	}
 
-	bool copy_mutex(void* dx_frame) {
-		std::unique_lock<std::mutex> lock(m_mutex);
-		return encode_send(dx_frame);
-	}
-
-	void notify_encode() {
-		m_cond.notify_one();
+	bool notify_encode(void* dx_frame) {
+		if (m_mutex.try_lock()) {
+			ID3D11Texture2D* pTexture = reinterpret_cast<ID3D11Texture2D*>(dx_frame);
+			m_pCurFrame = pTexture;
+			m_mutex.unlock();
+			m_cond.notify_one();
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 
 protected:
 	void run() {
+		Timer clock;
+		int frame_num = 0;
+		int64_t frame_cal_start = 0;
 		while (!m_bQuitFlag) {
+			if (frame_num == 0) {
+				frame_cal_start = clock.elapsed();
+			}
+
+			int64_t wait_frame_start = clock.elapsed();
 			std::unique_lock<std::mutex> lock(m_mutex);
-			m_cond.wait(lock);
+			m_cond.wait(lock, [this]() {
+				return this->m_pCurFrame != nullptr;
+			});
+			printf_s("#############wait time: %d \n", clock.elapsed() - wait_frame_start);
 
 			void* buf;
 			int buf_len;
-			
-			std::cout << "#######################start encode frame, thread id" << std::this_thread::get_id() << std::endl;
-			if (this->encode_recieve(&buf, &buf_len)) {
-				printf_s("Get a Frame success, buf_len: %d\n", buf_len);
+			int64_t encode_start_time = clock.elapsed();
+			if (encode_send(*(m_pCurFrame.GetAddressOf()))) {
+				if (this->encode_recieve(&buf, &buf_len)) {
+					frame_num += 1;
+					if (frame_num == 100) {
+						frame_num = 0;
+						int64_t cost_time = clock.elapsed() - frame_cal_start;
+						int64_t fps = 100 * 1000 / cost_time;
+						printf_s("fps: %d\n", fps);
+					}
+					printf_s("Get a Frame success, buf_len: %d, time cost: %d\n", buf_len, clock.elapsed() - encode_start_time);
+				}
 			}
+
+			this->m_pCurFrame = nullptr;
 		}
 	}
 
 private:
+	
 	dc_ptr m_pEncoder = nullptr;
 
 	IDXGIAdapter1* m_pNividaAdapter1 = nullptr;	// 用于初始化 D3DDevice 设备的适配器
@@ -142,4 +169,6 @@ private:
 	std::mutex m_mutex;
 	std::condition_variable m_cond;
 	std::thread* m_pThread = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pCurFrame = nullptr;
 };
