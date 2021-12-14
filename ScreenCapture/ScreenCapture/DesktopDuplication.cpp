@@ -108,7 +108,6 @@ int main(int argc, char** argv) {
         printf_s("Get IDXGIOutputDuplication fail: %d\n", res);
     }
 
-    
     // ´´½¨±àÂëÆ÷
     Encoder oEncoder;
     encoder_config encode_config;
@@ -136,6 +135,7 @@ int main(int argc, char** argv) {
         printf_s("encode init success\n");
     }
 
+    // multithread code
     oEncoder.start_encode();
 
     Timer clock;
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
         }
 
         printf("###################pCaptureOut->AcquireNextFrame wait start \n");
-        res = pCaptureOut->AcquireNextFrame(17, &frame_info, &frame_resource);
+        res = pCaptureOut->AcquireNextFrame(8, &frame_info, &frame_resource);
         printf("###################pCaptureOut->AcquireNextFrame wait end \n");
         if (res != S_OK) {
             switch (res) {
@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
                 break;
             case DXGI_ERROR_WAIT_TIMEOUT:
                 printf_s("DXGI_ERROR_WAIT_TIMEOUT\n");
+                std::this_thread::sleep_for(std::chrono::milliseconds(2));
                 break;
             case DXGI_ERROR_INVALID_CALL:
                 printf_s("DXGI_ERROR_INVALID_CALL\n");
@@ -174,15 +175,31 @@ int main(int argc, char** argv) {
                 continue;
             }
 
+            int64_t start_time = clock.elapsed();
             ID3D11Texture2D* texture;
             res = frame_resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&texture));
             if (res != S_OK) {
                 printf_s("Get ID3D11Texture2D fail: %d\n", res);
             }
             else {
+                // multithread code
                 oEncoder.notify_encode(texture);
+                //Timer oEncodeClock;
+                //int64_t encode_time_start = oEncodeClock.elapsed();
+                //void* buf = nullptr;
+                //int buf_len = 0;
+                //oEncoder.encode_send(texture);
+                //oEncoder.encode_recieve(&buf, &buf_len);
+                //printf_s("#####################Synchronize Encode const time: %d  buf len:%d\n", oEncodeClock.elapsed() - encode_time_start, buf_len);
+                //texture->Release();
             }
             frame_resource->Release();
+            int64_t end_time = clock.elapsed();
+            int64_t diff_time = end_time - start_time;
+            if (2 > diff_time) {
+                printf("########################sleep time:%d\n", 2 - diff_time);
+                std::this_thread::sleep_for(std::chrono::milliseconds(2 - diff_time));
+            }
         }
     }
 
