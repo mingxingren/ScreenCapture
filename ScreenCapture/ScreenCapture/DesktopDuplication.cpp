@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
     encode_config.framerate = 60;
     encode_config.bitrate = bitrate;
     encode_config.chroma_type = NV_CHROMA_YUV420;
-    encode_config.param = "";
+    encode_config.param = "-preset p1";
     encode_config.param_len = 0;
 
     //if (!oEncoder.encode_init(&encode_config)) {
@@ -180,9 +180,7 @@ int main(int argc, char** argv) {
                 printf_s("Get ID3D11Texture2D fail: %d\n", res);
             }
             else {
-                if (!oEncoder.notify_encode(texture)) {
-                    texture->Release();
-                }
+                oEncoder.notify_encode(texture);
             }
             frame_resource->Release();
         }

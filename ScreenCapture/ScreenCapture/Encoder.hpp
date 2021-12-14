@@ -5,11 +5,15 @@
 #include <thread>
 #include <sstream>
 #include <string>
+#include <queue>
 #include "time.h"
 #include "CommonFun.h"
 #include "CommonType.h"
 #include "display_captor.h"
 class Encoder {
+public:
+	using texture_type = Microsoft::WRL::ComPtr<ID3D11Texture2D>;
+
 public:
 	Encoder() {
 
@@ -107,16 +111,19 @@ public:
 		m_pThread = new std::thread(&Encoder::run, this);
 	}
 
-	bool notify_encode(void* dx_frame) {
-		if (m_mutex.try_lock()) {
+	void notify_encode(void* dx_frame) {
+		bool need_notify = false;
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
 			ID3D11Texture2D* pTexture = reinterpret_cast<ID3D11Texture2D*>(dx_frame);
-			m_pCurFrame = pTexture;
-			m_mutex.unlock();
-			m_cond.notify_one();
-			return true;
+			texture_type pTexture_com = pTexture;
+			if (m_queueTexture.empty()) {
+				need_notify = true;
+			}
+			m_queueTexture.push(pTexture);
 		}
-		else {
-			return false;
+		if (need_notify) {
+			m_cond.notify_one();
 		}
 	}
 
@@ -125,22 +132,37 @@ protected:
 		Timer clock;
 		int frame_num = 0;
 		int64_t frame_cal_start = 0;
+		int64_t wait_frame_start = clock.elapsed();
 		while (!m_bQuitFlag) {
 			if (frame_num == 0) {
 				frame_cal_start = clock.elapsed();
 			}
 
-			int64_t wait_frame_start = clock.elapsed();
-			std::unique_lock<std::mutex> lock(m_mutex);
-			m_cond.wait(lock, [this]() {
-				return this->m_pCurFrame != nullptr;
-			});
+			texture_type cur_frame = nullptr;
+			{
+				std::unique_lock<std::mutex> lock(m_mutex);
+				if (!m_queueTexture.empty()) {
+					cur_frame = m_queueTexture.front();
+					m_queueTexture.pop();
+				}
+				else {
+					m_cond.wait(lock, [this]() {
+						return !this->m_queueTexture.empty();
+					});
+					continue;
+				}
+			}
+
+			if (cur_frame == nullptr) {
+				continue;
+			}
+
 			printf_s("#############wait time: %d \n", clock.elapsed() - wait_frame_start);
 
 			void* buf;
 			int buf_len;
 			int64_t encode_start_time = clock.elapsed();
-			if (encode_send(*(m_pCurFrame.GetAddressOf()))) {
+			if (encode_send(*(cur_frame.GetAddressOf()))) {
 				if (this->encode_recieve(&buf, &buf_len)) {
 					frame_num += 1;
 					if (frame_num == 100) {
@@ -149,26 +171,23 @@ protected:
 						int64_t fps = 100 * 1000 / cost_time;
 						printf_s("fps: %d\n", fps);
 					}
+					wait_frame_start = clock.elapsed();
 					printf_s("Get a Frame success, buf_len: %d, time cost: %d\n", buf_len, clock.elapsed() - encode_start_time);
 				}
 			}
-
-			this->m_pCurFrame = nullptr;
 		}
 	}
 
 private:
-	
 	dc_ptr m_pEncoder = nullptr;
 
 	IDXGIAdapter1* m_pNividaAdapter1 = nullptr;	// 用于初始化 D3DDevice 设备的适配器
 	ID3D11Device* m_pD3DDevice = nullptr;			// 显卡设备对象
 	ID3D11DeviceContext* m_pImmContext;				// 显卡设备及时上下文
 	atomic_bool m_bQuitFlag;
+	std::condition_variable m_cond;
 
 	std::mutex m_mutex;
-	std::condition_variable m_cond;
 	std::thread* m_pThread = nullptr;
-
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pCurFrame = nullptr;
+	std::queue<texture_type> m_queueTexture;
 };
