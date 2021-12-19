@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
     // ´´½¨±àÂëÆ÷
     Encoder oEncoder;
     encoder_config encode_config;
-    encode_config.codec = NV_CODEC_H264;
+    encode_config.codec = NV_CODEC_HEVC;
     encode_config.width = sreen_desc.DesktopCoordinates.right;
     encode_config.height = sreen_desc.DesktopCoordinates.bottom;
     int bitrate = 10 * 1000 * 1000;
@@ -138,10 +138,12 @@ int main(int argc, char** argv) {
     // multithread code
     oEncoder.start_encode();
 
+    ID3D11Texture2D* copy_texture = nullptr;
+
     Timer clock;
     while (true) {
         DXGI_OUTDUPL_FRAME_INFO frame_info;
-        IDXGIResource* frame_resource;
+        IDXGIResource* frame_resource = nullptr;
 
         res = pCaptureOut->ReleaseFrame();
         if (res != S_OK) {
@@ -150,7 +152,7 @@ int main(int argc, char** argv) {
 
         printf("###################pCaptureOut->AcquireNextFrame wait start \n");
         res = pCaptureOut->AcquireNextFrame(8, &frame_info, &frame_resource);
-        printf("###################pCaptureOut->AcquireNextFrame wait end \n");
+        printf("###################pCaptureOut->AcquireNextFrame wait end, 0x%p \n", frame_resource);
         if (res != S_OK) {
             switch (res) {
             case DXGI_ERROR_ACCESS_LOST:
@@ -176,22 +178,49 @@ int main(int argc, char** argv) {
             }
 
             int64_t start_time = clock.elapsed();
-            ID3D11Texture2D* texture;
+            ID3D11Texture2D* texture = nullptr;
             res = frame_resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&texture));
             if (res != S_OK) {
                 printf_s("Get ID3D11Texture2D fail: %d\n", res);
             }
             else {
-                // multithread code
-                oEncoder.notify_encode(texture);
-                //Timer oEncodeClock;
-                //int64_t encode_time_start = oEncodeClock.elapsed();
-                //void* buf = nullptr;
-                //int buf_len = 0;
-                //oEncoder.encode_send(texture);
-                //oEncoder.encode_recieve(&buf, &buf_len);
-                //printf_s("#####################Synchronize Encode const time: %d  buf len:%d\n", oEncodeClock.elapsed() - encode_time_start, buf_len);
-                //texture->Release();
+                if (copy_texture == nullptr) {
+                    D3D11_TEXTURE2D_DESC texture_desc, org_texture_desc;
+                    texture->GetDesc(&org_texture_desc);
+
+                    ZeroMemory(&texture_desc, sizeof(D3D11_TEXTURE2D_DESC));
+                    texture_desc.Width = org_texture_desc.Width;
+                    texture_desc.Height = org_texture_desc.Height;
+                    texture_desc.MipLevels = 1;
+                    texture_desc.ArraySize = 1;
+                    texture_desc.Format = org_texture_desc.Format;
+                    texture_desc.SampleDesc.Count = 1;
+                    texture_desc.Usage = D3D11_USAGE_DEFAULT;
+                    texture_desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+                    texture_desc.CPUAccessFlags = 0;
+
+                    printf_s("#######################texture_desc.width: %d  height: %d  format:%d \n",
+                        texture_desc.Width, texture_desc.Height, texture_desc.Format);
+                    res = pD3DDevice->CreateTexture2D(&texture_desc, NULL, &copy_texture);
+                    if (res != S_OK) {
+                        printf_s("Create a texture ID3D11Texture2D fail: 0x%x\n", res);
+                    }
+                }
+
+                printf_s("#################Texture address:0x%p  copy texture address:0x%p\n", texture, copy_texture);
+                int64_t copy_start_time = clock.elapsed();
+
+                ID3D11Resource* texture_resource = nullptr;
+                texture->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&texture_resource));
+                
+                ID3D11Resource* copy_resource = nullptr;
+                res = copy_texture->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&copy_resource));
+
+                if (0 != ::dc_copy(oEncoder.get_ptr(), copy_texture, texture_resource)) {
+                    // multithread code
+                    oEncoder.notify_encode(copy_texture);
+                }
+
             }
             frame_resource->Release();
             int64_t end_time = clock.elapsed();

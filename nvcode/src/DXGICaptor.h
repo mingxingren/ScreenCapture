@@ -15,6 +15,10 @@ public:
 	VOID			UnInit();
 
 	void WaitCopyComplete();
+	ID3D11DeviceContext* Context() {
+		return m_pContext;
+	}
+
 private:
 	bool InitDx11Fence();
 

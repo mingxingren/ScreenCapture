@@ -1,4 +1,5 @@
 #pragma once
+#include <stdio.h>
 #include <array>
 #include <atomic>
 #include <condition_variable>
@@ -41,6 +42,11 @@ public:
 		if (m_pNividaAdapter1) {
 			m_pNividaAdapter1->Release();
 			m_pNividaAdapter1 = nullptr;
+		}
+
+		if (test_file) {
+			fclose(test_file);
+			test_file = nullptr;
 		}
 	}
 	
@@ -127,12 +133,19 @@ public:
 		}
 	}
 
+	dc_ptr get_ptr() {
+		return m_pEncoder;
+	}
+
 protected:
 	void run() {
 		Timer clock;
 		int frame_num = 0;
 		int64_t frame_cal_start = 0;
 		int64_t wait_frame_start = clock.elapsed();
+
+		test_file = fopen("test_file.h264", "wb");
+
 		while (!m_bQuitFlag) {
 			if (frame_num == 0) {
 				frame_cal_start = clock.elapsed();
@@ -163,6 +176,7 @@ protected:
 			int buf_len;
 			int64_t encode_start_time = clock.elapsed();
 			if (encode_send(*(cur_frame.GetAddressOf()))) {
+				printf_s("##################copy frame cost time:%d\n", clock.elapsed() - encode_start_time);
 				if (this->encode_recieve(&buf, &buf_len)) {
 					frame_num += 1;
 					if (frame_num == 100) {
@@ -173,6 +187,8 @@ protected:
 					}
 					wait_frame_start = clock.elapsed();
 					printf_s("Get a Frame success, buf_len: %d, time cost: %d\n", buf_len, clock.elapsed() - encode_start_time);
+
+					fwrite(buf, 1, buf_len, test_file);
 				}
 			}
 		}
@@ -190,4 +206,6 @@ private:
 	std::mutex m_mutex;
 	std::thread* m_pThread = nullptr;
 	std::queue<texture_type> m_queueTexture;
+
+	FILE* test_file = nullptr;
 };

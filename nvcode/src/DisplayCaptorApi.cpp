@@ -46,8 +46,8 @@ DISPLAY_CAPTOR_API int dc_encode_send(dc_ptr inst, void* dx_frame) {
 		/* GPU copy to GPU */
 		//auto t0 = std::chrono::system_clock::now();
 		pScreen->m_pEncoder->OnSurfaceUpdate(dx_frame);
-		pScreen->WaitCopyComplete();
-		pScreen->m_nFrameId++;
+		//pScreen->WaitCopyComplete();
+		//pScreen->m_nFrameId++;
 		//auto t1 = std::chrono::system_clock::now();
 		LOG(INFO) << "dc_encode_send success";
 		return TRUE;
@@ -73,6 +73,20 @@ DISPLAY_CAPTOR_API int dc_encode_recieve(dc_ptr inst, void** buf, int* buf_len) 
 		//auto copy_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
 		//auto encode_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 		//LOG(INFO) << "gpu copy:" << copy_ms.count() << " ms, encode: " << encode_ms.count() << " ms";
+		return TRUE;
+	}
+	return FALSE;
+}
+
+DISPLAY_CAPTOR_API int dc_copy(dc_ptr inst, void* dst_resource, void* src_resource) {
+	VideoDXGICaptor* pScreen = (VideoDXGICaptor*)inst;
+	if (pScreen && pScreen->m_pEncoder) {
+		/* GPU copy to GPU */
+		//auto t0 = std::chrono::system_clock::now();
+		pScreen->Context()->CopyResource((ID3D11Resource*)dst_resource, (ID3D11Resource*)src_resource);
+		pScreen->WaitCopyComplete();
+		//pScreen->m_nFrameId++;
+		//auto t1 = std::chrono::system_clock::now();
 		return TRUE;
 	}
 	return FALSE;

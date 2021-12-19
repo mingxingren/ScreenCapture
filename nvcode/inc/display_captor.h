@@ -40,6 +40,7 @@ DISPLAY_CAPTOR_API int dc_encoder_reset(dc_ptr inst, const encoder_config_t* con
 DISPLAY_CAPTOR_API void dc_encoder_free(dc_ptr inst);
 DISPLAY_CAPTOR_API int dc_encode_send(dc_ptr inst, void* dx_frame);
 DISPLAY_CAPTOR_API int dc_encode_recieve(dc_ptr inst, void** buf, int* buf_len);
+DISPLAY_CAPTOR_API int dc_copy(dc_ptr inst, void* dst_resource, void* src_resource);
 
 #ifdef __cplusplus
 }

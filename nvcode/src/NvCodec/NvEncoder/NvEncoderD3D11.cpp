@@ -90,6 +90,7 @@ void NvEncoderD3D11::AllocateInputBuffers(int32_t numInputBuffers)
             desc.Usage = D3D11_USAGE_DEFAULT;
             desc.BindFlags = D3D11_BIND_RENDER_TARGET;
             desc.CPUAccessFlags = 0;
+
             if (m_pD3D11Device->CreateTexture2D(&desc, NULL, &pInputTextures) != S_OK)
             {
                 NVENC_THROW_ERROR("Failed to create d3d11textures", NV_ENC_ERR_OUT_OF_MEMORY);
