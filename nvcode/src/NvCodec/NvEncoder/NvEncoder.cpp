@@ -177,6 +177,7 @@ void NvEncoder::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* pIntializeP
     if (!m_bOutputInVideoMemory)
     {
         pIntializeParams->enableEncodeAsync = GetCapabilityValue(codecGuid, NV_ENC_CAPS_ASYNC_ENCODE_SUPPORT);
+        printf_s("#######################pIntializeParams->enableEncodeAsync: %d\n", pIntializeParams->enableEncodeAsync);
     }
 #endif
 
@@ -225,7 +226,7 @@ void NvEncoder::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* pIntializeP
     {
         pIntializeParams->bufferFormat = m_eBufferFormat;
     }
-    
+
     return;
 }
 
@@ -317,7 +318,11 @@ void NvEncoder::CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* pEncoderParams)
     m_nMaxEncodeWidth = m_initializeParams.maxEncodeWidth;
     m_nMaxEncodeHeight = m_initializeParams.maxEncodeHeight;
 
-    m_nEncoderBuffer = m_encodeConfig.frameIntervalP + m_encodeConfig.rcParams.lookaheadDepth + m_nExtraOutputDelay;
+    //m_nEncoderBuffer = m_encodeConfig.frameIntervalP + m_encodeConfig.rcParams.lookaheadDepth + m_nExtraOutputDelay;
+    m_nEncoderBuffer = 3;
+    printf_s("######################m_encodeConfig.frameIntervalP: %d, m_encodeConfig.rcParams.lookaheadDepth:%d, m_nExtraOutputDelay: %d \n",
+        m_encodeConfig.frameIntervalP, m_encodeConfig.rcParams.lookaheadDepth, m_nExtraOutputDelay);
+    
     m_nOutputDelay = m_nEncoderBuffer - 1;
     m_vMappedInputBuffers.resize(m_nEncoderBuffer, nullptr);
 
@@ -420,7 +425,8 @@ void NvEncoder::DestroyHWEncoder()
 
 const NvEncInputFrame* NvEncoder::GetNextInputFrame()
 {
-    int i = m_iToSend % m_nEncoderBuffer;
+    int i = m_iWriteIndex % m_nEncoderBuffer;
+    m_iWriteIndex += 1;
     return &m_vInputFrames[i];
 }
 
@@ -636,6 +642,7 @@ NV_ENC_REGISTERED_PTR NvEncoder::RegisterResource(void *pBuffer, NV_ENC_INPUT_RE
 void NvEncoder::RegisterInputResources(std::vector<void*> inputframes, NV_ENC_INPUT_RESOURCE_TYPE eResourceType,
                                          int width, int height, int pitch, NV_ENC_BUFFER_FORMAT bufferFormat, bool bReferenceFrame)
 {
+    printf_s("#########################RegisterInputResources inputframes.size(): %d", inputframes.size());
     for (uint32_t i = 0; i < inputframes.size(); ++i)
     {
         NV_ENC_REGISTERED_PTR registeredPtr = RegisterResource(inputframes[i], eResourceType, width, height, pitch, bufferFormat, NV_ENC_INPUT_IMAGE);

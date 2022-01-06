@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
     // ´´½¨±àÂëÆ÷
     Encoder oEncoder;
     encoder_config encode_config;
-    encode_config.codec = NV_CODEC_HEVC;
+    encode_config.codec = NV_CODEC_H264;
     encode_config.width = sreen_desc.DesktopCoordinates.right;
     encode_config.height = sreen_desc.DesktopCoordinates.bottom;
     int bitrate = 10 * 1000 * 1000;
@@ -120,13 +120,6 @@ int main(int argc, char** argv) {
     encode_config.chroma_type = NV_CHROMA_YUV420;
     encode_config.param = "-preset p1";
     encode_config.param_len = 0;
-
-    //if (!oEncoder.encode_init(&encode_config)) {
-    //    printf_s("encode init fail!\n");
-    //}
-    //else {
-    //    printf_s("encode init success\n");
-    //}
 
     if (!oEncoder.encode_init_width(pD3DDevice, pImmContext, &encode_config)) {
         printf_s("encode init fail!\n");
@@ -141,6 +134,7 @@ int main(int argc, char** argv) {
     ID3D11Texture2D* copy_texture = nullptr;
 
     Timer clock;
+    int64_t frame_num = 0;
     while (true) {
         DXGI_OUTDUPL_FRAME_INFO frame_info;
         IDXGIResource* frame_resource = nullptr;
@@ -150,9 +144,7 @@ int main(int argc, char** argv) {
             printf_s("IDXGIOutputDuplication Release Frame\n");
         }
 
-        printf("###################pCaptureOut->AcquireNextFrame wait start \n");
-        res = pCaptureOut->AcquireNextFrame(8, &frame_info, &frame_resource);
-        printf("###################pCaptureOut->AcquireNextFrame wait end, 0x%p \n", frame_resource);
+        res = pCaptureOut->AcquireNextFrame(6, &frame_info, &frame_resource);
         if (res != S_OK) {
             switch (res) {
             case DXGI_ERROR_ACCESS_LOST:
@@ -184,43 +176,53 @@ int main(int argc, char** argv) {
                 printf_s("Get ID3D11Texture2D fail: %d\n", res);
             }
             else {
-                if (copy_texture == nullptr) {
-                    D3D11_TEXTURE2D_DESC texture_desc, org_texture_desc;
-                    texture->GetDesc(&org_texture_desc);
+                //if (copy_texture == nullptr) {
+                //    D3D11_TEXTURE2D_DESC texture_desc, org_texture_desc;
+                //    texture->GetDesc(&org_texture_desc);
 
-                    ZeroMemory(&texture_desc, sizeof(D3D11_TEXTURE2D_DESC));
-                    texture_desc.Width = org_texture_desc.Width;
-                    texture_desc.Height = org_texture_desc.Height;
-                    texture_desc.MipLevels = 1;
-                    texture_desc.ArraySize = 1;
-                    texture_desc.Format = org_texture_desc.Format;
-                    texture_desc.SampleDesc.Count = 1;
-                    texture_desc.Usage = D3D11_USAGE_DEFAULT;
-                    texture_desc.BindFlags = D3D11_BIND_RENDER_TARGET;
-                    texture_desc.CPUAccessFlags = 0;
+                //    ZeroMemory(&texture_desc, sizeof(D3D11_TEXTURE2D_DESC));
+                //    texture_desc.Width = org_texture_desc.Width;
+                //    texture_desc.Height = org_texture_desc.Height;
+                //    texture_desc.MipLevels = 1;
+                //    texture_desc.ArraySize = 1;
+                //    texture_desc.Format = org_texture_desc.Format;
+                //    texture_desc.SampleDesc.Count = 1;
+                //    texture_desc.Usage = D3D11_USAGE_DEFAULT;
+                //    texture_desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+                //    texture_desc.CPUAccessFlags = 0;
 
-                    printf_s("#######################texture_desc.width: %d  height: %d  format:%d \n",
-                        texture_desc.Width, texture_desc.Height, texture_desc.Format);
-                    res = pD3DDevice->CreateTexture2D(&texture_desc, NULL, &copy_texture);
-                    if (res != S_OK) {
-                        printf_s("Create a texture ID3D11Texture2D fail: 0x%x\n", res);
-                    }
-                }
+                //    printf_s("#######################texture_desc.width: %d  height: %d  format:%d \n",
+                //        texture_desc.Width, texture_desc.Height, texture_desc.Format);
+                //    res = pD3DDevice->CreateTexture2D(&texture_desc, NULL, &copy_texture);
+                //    if (res != S_OK) {
+                //        printf_s("Create a texture ID3D11Texture2D fail: 0x%x\n", res);
+                //    }
+                //}
 
-                printf_s("#################Texture address:0x%p  copy texture address:0x%p\n", texture, copy_texture);
-                int64_t copy_start_time = clock.elapsed();
+                //printf_s("#################Texture address:0x%p  copy texture address:0x%p\n", texture, copy_texture);
+                //int64_t copy_start_time = clock.elapsed();
 
-                ID3D11Resource* texture_resource = nullptr;
-                texture->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&texture_resource));
-                
-                ID3D11Resource* copy_resource = nullptr;
-                res = copy_texture->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&copy_resource));
+                //ID3D11Resource* texture_resource = nullptr;
+                //texture->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&texture_resource));
+                //
+                //ID3D11Resource* copy_resource = nullptr;
+                //res = copy_texture->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&copy_resource));
 
-                if (0 != ::dc_copy(oEncoder.get_ptr(), copy_texture, texture_resource)) {
-                    // multithread code
-                    oEncoder.notify_encode(copy_texture);
-                }
+                //if (0 != ::dc_copy(oEncoder.get_ptr(), copy_texture, texture_resource)) {
+                //    // multithread code
+                //    oEncoder.notify_encode(copy_texture);
+                //}
 
+                std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp
+                    = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+                std::time_t timestamp = tp.time_since_epoch().count();
+                frame_num += 1;
+                printf_s("#######capture frame num: %d,  timestamp: %d\n", frame_num, timestamp);
+
+                int64_t encode_start_time = clock.elapsed();
+                oEncoder.notify_encode(texture);
+                int64_t encode_end_time = clock.elapsed();
+                printf_s("#######call oEncoder.notify_encode time: %d\n", encode_end_time - encode_start_time);
             }
             frame_resource->Release();
             int64_t end_time = clock.elapsed();

@@ -114,6 +114,7 @@ public:
 
 	void start_encode() {
 		m_bQuitFlag.store(false);
+		m_iHasCount.store(0);
 		m_pThread = new std::thread(&Encoder::run, this);
 	}
 
@@ -123,11 +124,13 @@ public:
 			std::lock_guard<std::mutex> lock(m_mutex);
 			ID3D11Texture2D* pTexture = reinterpret_cast<ID3D11Texture2D*>(dx_frame);
 			texture_type pTexture_com = pTexture;
-			if (m_queueTexture.empty()) {
+			if (m_iHasCount == 0) {
 				need_notify = true;
 			}
-			m_queueTexture.push(pTexture);
+			this->encode_send(dx_frame);
+			m_iHasCount += 1;
 		}
+
 		if (need_notify) {
 			m_cond.notify_one();
 		}
@@ -141,6 +144,7 @@ protected:
 	void run() {
 		Timer clock;
 		int frame_num = 0;
+		int64_t frame_count = 0;
 		int64_t frame_cal_start = 0;
 		int64_t wait_frame_start = clock.elapsed();
 
@@ -151,23 +155,12 @@ protected:
 				frame_cal_start = clock.elapsed();
 			}
 
-			texture_type cur_frame = nullptr;
+			std::unique_lock<std::mutex> lock(m_mutex);
+			if (m_iHasCount == 0)
 			{
-				std::unique_lock<std::mutex> lock(m_mutex);
-				if (!m_queueTexture.empty()) {
-					cur_frame = m_queueTexture.front();
-					m_queueTexture.pop();
-				}
-				else {
-					m_cond.wait(lock, [this]() {
-						return !this->m_queueTexture.empty();
-					});
-					continue;
-				}
-			}
-
-			if (cur_frame == nullptr) {
-				continue;
+				m_cond.wait(lock, [this]() {
+					return m_iHasCount > 0;
+				});
 			}
 
 			printf_s("#############wait time: %d \n", clock.elapsed() - wait_frame_start);
@@ -175,21 +168,24 @@ protected:
 			void* buf;
 			int buf_len;
 			int64_t encode_start_time = clock.elapsed();
-			if (encode_send(*(cur_frame.GetAddressOf()))) {
-				printf_s("##################copy frame cost time:%d\n", clock.elapsed() - encode_start_time);
-				if (this->encode_recieve(&buf, &buf_len)) {
-					frame_num += 1;
-					if (frame_num == 100) {
-						frame_num = 0;
-						int64_t cost_time = clock.elapsed() - frame_cal_start;
-						int64_t fps = 100 * 1000 / cost_time;
-						printf_s("fps: %d\n", fps);
-					}
-					wait_frame_start = clock.elapsed();
-					printf_s("Get a Frame success, buf_len: %d, time cost: %d\n", buf_len, clock.elapsed() - encode_start_time);
-
-					fwrite(buf, 1, buf_len, test_file);
+			if (this->encode_recieve(&buf, &buf_len)) {
+				m_iHasCount -= 1;
+				frame_num += 1;
+				if (frame_num == 100) {
+					frame_num = 0;
+					int64_t cost_time = clock.elapsed() - frame_cal_start;
+					int64_t fps = 100 * 1000 / cost_time;
+					printf_s("fps: %d\n", fps);
 				}
+				wait_frame_start = clock.elapsed();
+				printf_s("Get a Frame success, buf_len: %d, time cost: %d\n", buf_len, clock.elapsed() - encode_start_time);
+				std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp
+					= std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+				std::time_t timestamp = tp.time_since_epoch().count();
+				frame_count += 1;
+				printf_s("#######encoder frame num: %d,  timestamp: %d\n", frame_count, timestamp);
+
+				//fwrite(buf, 1, buf_len, test_file);
 			}
 		}
 	}
@@ -205,7 +201,7 @@ private:
 
 	std::mutex m_mutex;
 	std::thread* m_pThread = nullptr;
-	std::queue<texture_type> m_queueTexture;
+	atomic_int16_t m_iHasCount;
 
 	FILE* test_file = nullptr;
 };

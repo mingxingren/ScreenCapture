@@ -77,6 +77,10 @@ bool  CStreamEncoder::Init(ID3D11Device* pD3D11Device, ID3D11DeviceContext* pD3D
 		initializeParams.frameRateDen = 1;
 		initializeParams.encodeConfig->rcParams.averageBitRate = pConfig->bitrate;
 		initializeParams.encodeConfig->rcParams.vbvBufferSize = encodeConfig.rcParams.averageBitRate * initializeParams.frameRateDen / initializeParams.frameRateNum;
+		if (initParam.IsCodecH264() == true) {
+			initializeParams.encodeConfig->encodeCodecConfig.h264Config.disableSVCPrefixNalu = 1;
+		}
+		
 		initParam.SetInitParams(&initializeParams, bufferFmt);
 		
 		/*
@@ -92,6 +96,17 @@ bool  CStreamEncoder::Init(ID3D11Device* pD3D11Device, ID3D11DeviceContext* pD3D
 			std::string fullParam = initParam.FullParamToString(&initializeParams);
 			LOG(INFO) << fullParam;
 		}
+
+
+		printf_s("############################ h264 enableFillerDataInsertion: %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.enableFillerDataInsertion);
+		printf_s("############################ h264 outputBufferingPeriodSEI : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.outputBufferingPeriodSEI);
+		printf_s("############################ h264 outputPictureTimingSEI  : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.outputPictureTimingSEI);
+		printf_s("############################ h264 outputAUD   : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.outputAUD);
+		printf_s("############################ h264 outputFramePackingSEI    : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.outputFramePackingSEI);
+		printf_s("############################ h264 outputRecoveryPointSEI  : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.outputRecoveryPointSEI);
+		printf_s("############################ h264 enableScalabilityInfoSEI  : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.enableScalabilityInfoSEI);
+		printf_s("############################ h264 disableSVCPrefixNalu  : %d\n", initializeParams.encodeConfig->encodeCodecConfig.h264Config.disableSVCPrefixNalu);
+		printf_s("############################ h264 enableOutputInVidmem  : %d\n", initializeParams.enableOutputInVidmem);
 		m_pNvEncoder->CreateEncoder(&initializeParams);
 	}
 	catch (NVENCException& e) {

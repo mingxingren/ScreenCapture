@@ -84,7 +84,7 @@ DISPLAY_CAPTOR_API int dc_copy(dc_ptr inst, void* dst_resource, void* src_resour
 		/* GPU copy to GPU */
 		//auto t0 = std::chrono::system_clock::now();
 		pScreen->Context()->CopyResource((ID3D11Resource*)dst_resource, (ID3D11Resource*)src_resource);
-		pScreen->WaitCopyComplete();
+		//pScreen->WaitCopyComplete();
 		//pScreen->m_nFrameId++;
 		//auto t1 = std::chrono::system_clock::now();
 		return TRUE;

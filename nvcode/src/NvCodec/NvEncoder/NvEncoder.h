@@ -424,6 +424,7 @@ protected:
     int32_t m_iGot = 0;
     int32_t m_nEncoderBuffer = 0;
     int32_t m_nOutputDelay = 0;
+    int32_t m_iWriteIndex = 0;
 
 private:
     uint32_t m_nWidth;
