@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
             printf_s("IDXGIOutputDuplication Release Frame\n");
         }
 
-        res = pCaptureOut->AcquireNextFrame(6, &frame_info, &frame_resource);
+        res = pCaptureOut->AcquireNextFrame(8, &frame_info, &frame_resource);
         if (res != S_OK) {
             switch (res) {
             case DXGI_ERROR_ACCESS_LOST:
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
                 break;
             case DXGI_ERROR_WAIT_TIMEOUT:
                 printf_s("DXGI_ERROR_WAIT_TIMEOUT\n");
-                std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                //std::this_thread::sleep_for(std::chrono::milliseconds(2));
                 break;
             case DXGI_ERROR_INVALID_CALL:
                 printf_s("DXGI_ERROR_INVALID_CALL\n");
@@ -227,10 +227,7 @@ int main(int argc, char** argv) {
             frame_resource->Release();
             int64_t end_time = clock.elapsed();
             int64_t diff_time = end_time - start_time;
-            if (2 > diff_time) {
-                printf("########################sleep time:%d\n", 2 - diff_time);
-                std::this_thread::sleep_for(std::chrono::milliseconds(2 - diff_time));
-            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
 
